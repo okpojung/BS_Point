@@ -1,0 +1,61 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+
+### lib 디렉토리 구조 (필요한 부분이 있다면 구조를 참고해서 생성할 것)
+```
+lib/
+├── main.dart              # 앱 진입점
+├── model/                 # 데이터 모델 클래스들
+│   ├── enum_list.dart     # 열거형 정의
+│   ├── ...
+│   └── ...
+├── widgets/               # 재사용 가능한 UI 위젯들
+│   ├── custom_dialog.dart
+│   └── ...
+├── view_layout/          # 화면 레이아웃들
+│   ├── provider/               # feature Provider
+│   ├── ...
+│   └── ...
+├── provider/             # 상태 관리 (Riverpod) Common Provider
+│   ├── main_provider.dart          # 메인 상태
+│   ├── ...
+│   └── ...
+├── res/                  # 리소스 및 상수
+│   ├── custom_theme.dart       # 커스텀 테마
+│   ├── custom_colors.dart      # 커스텀 색상
+│   └── constants.dart     # 상수
+└── utils/                # 유틸리티 함수
+    └── debounce.dart           # 디바운스 유틸리티
+```
+
+## 기술 스택 및 주요 라이브러리
+
+# 인증 및 로그인
+- **ars_login** : https://github.com/dev-jkyang/ars_login
+
+# 웹뷰
+- **flutter_inappwebview**: 인앱 웹뷰
+- 웹뷰 url : https://pb.barosvc.com/bsp/?number=[유저전화번호] (전화번호는 하이픈 없이 숫자만)
+
+# 로컬디비
+- **SharedPreferenceshared_preferences**: 로그인 상태 및 url 저장
+
+
+##코딩 가이드
+1.가능한 항상 헬퍼 메서드 대신에 별도의 위젯 클래스로 분리할 것을 권장
+2.기존 코딩된 구조에 맞춰 적절하게 파일 생성 및 코딩하기
+3.기존 UI는 최대한 건들지 않기
+4.deprecated된 내용은 최신 내용으로 대체한다. (특히 withOpacity 절대 사용금지)
+5.pubspec.yaml 에 package를 추가할시 최신 버전의 package로 추가한다.
+
+##테스팅 가이드
+1. 비즈니스 로직에 대한 유닛 테스트 작성하기
+2. UI 컴포넌트에 대한 위젯 테스트 구현하기
+3. 기능 테스트를 위해 통합 테스트 사용하기
+4. 적절한 모킹(mocking) 전략 구현하기
+5. 적절한 테스트 커버리지 도구 사용하기
+6. 적절한 테스트 이름 규칙 따르기
+7. 적절한 CI/CD 테스팅 구현하기
