@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../provider/main_provider.dart';
@@ -16,6 +17,10 @@ class AppInfoScreen extends ConsumerStatefulWidget {
 }
 
 class _AppInfoScreenState extends ConsumerState<AppInfoScreen> {
+  static const MethodChannel _deviceInfoChannel = MethodChannel(
+    'com.hnglife.bspoint/device_info',
+  );
+
   late final Future<_AppInfoData> _appInfoFuture;
 
   @override
@@ -112,25 +117,28 @@ class _AppInfoScreenState extends ConsumerState<AppInfoScreen> {
   }
 
   List<Widget> _buildArsItems(AuthState authState) {
-    final rows = <Widget>[
-      _InfoRow(label: '\uC804\uD654\uBC88\uD638', value: authState.userPhone ?? '-'),
-    ];
+    final rows = <Widget>[];
 
     final userInfo = authState.userInfo;
     if (userInfo == null || userInfo.isEmpty) {
-      return rows;
+      return const [
+        _InfoRow(
+          label: '\uC0C1\uD0DC',
+          value:
+              '\uC800\uC7A5\uB41C \uC778\uC99D \uC815\uBCF4\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.',
+        ),
+      ];
     }
 
-    final labelMap = <String, String>{
+    const visibleFields = <String, String>{
       'app_cid': '\uC778\uC99D \uC804\uD654\uBC88\uD638',
       'appuuid': '\uC571 UUID',
-      'appsid': '\uC138\uC158 ID',
       'now': '\uC778\uC99D \uC2DC\uAC01',
       'prnts_phone_no': '\uCD94\uCC9C\uC778 \uC804\uD654\uBC88\uD638',
     };
 
-    final sortedKeys = userInfo.keys.toList()..sort();
-    for (final key in sortedKeys) {
+    for (final entry in visibleFields.entries) {
+      final key = entry.key;
       final value = userInfo[key];
       if (value == null || value.toString().trim().isEmpty) {
         continue;
@@ -138,10 +146,20 @@ class _AppInfoScreenState extends ConsumerState<AppInfoScreen> {
 
       rows.add(
         _InfoRow(
-          label: labelMap[key] ?? key,
+          label: entry.value,
           value: value.toString(),
         ),
       );
+    }
+
+    if (rows.isEmpty) {
+      return const [
+        _InfoRow(
+          label: '\uC0C1\uD0DC',
+          value:
+              '\uD45C\uC2DC\uD560 \uC778\uC99D \uC815\uBCF4\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.',
+        ),
+      ];
     }
 
     return rows;
@@ -154,12 +172,15 @@ class _AppInfoScreenState extends ConsumerState<AppInfoScreen> {
 
     if (Platform.isAndroid) {
       final info = await deviceInfoPlugin.androidInfo;
+      final carrierName = await _getCarrierName();
       deviceRows.addAll([
         _InfoRow(label: '\uD50C\uB7AB\uD3FC', value: 'Android'),
         _InfoRow(label: 'Android \uBC84\uC804', value: info.version.release),
         _InfoRow(label: 'SDK', value: '${info.version.sdkInt}'),
         _InfoRow(label: '\uC81C\uC870\uC0AC', value: info.manufacturer),
         _InfoRow(label: '\uBAA8\uB378', value: info.model),
+        _InfoRow(label: '\uD1B5\uC2E0\uC0AC', value: carrierName ?? '-'),
+        const SizedBox(height: 12),
       ]);
     } else if (Platform.isIOS) {
       final info = await deviceInfoPlugin.iosInfo;
@@ -188,6 +209,20 @@ class _AppInfoScreenState extends ConsumerState<AppInfoScreen> {
       packageName: packageInfo.packageName,
       deviceRows: deviceRows,
     );
+  }
+
+  Future<String?> _getCarrierName() async {
+    try {
+      final carrierName = await _deviceInfoChannel.invokeMethod<String>(
+        'getCarrierName',
+      );
+      if (carrierName == null || carrierName.trim().isEmpty) {
+        return null;
+      }
+      return carrierName;
+    } on PlatformException {
+      return null;
+    }
   }
 }
 
