@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../provider/main_provider.dart';
 import '../res/custom_colors.dart';
+import 'app_info_screen.dart';
 
 class WebViewScreen extends ConsumerStatefulWidget {
   const WebViewScreen({super.key});
@@ -14,20 +15,17 @@ class WebViewScreen extends ConsumerStatefulWidget {
 }
 
 class _WebViewScreenState extends ConsumerState<WebViewScreen> {
-  InAppWebViewController? _webViewController;
-
-  bool _isLoading = true;
-  bool _canGoBack = false;
-  bool _canGoForward = false;
-  String _currentUrl = '';
-
-  /// 운영용 임시 SSL 허용 호스트
-  /// 서버 인증서 구성이 완전히 정상화되면 제거 권장
   static const Set<String> _allowedSslHosts = {
     'pb.barosvc.com',
     'barosvc.com',
     'e.brt.so',
   };
+
+  InAppWebViewController? _webViewController;
+  bool _isLoading = true;
+  bool _canGoBack = false;
+  bool _canGoForward = false;
+  String _currentUrl = '';
 
   @override
   void initState() {
@@ -58,9 +56,12 @@ class _WebViewScreenState extends ConsumerState<WebViewScreen> {
   ]) async {
     final canGoBack = await controller.canGoBack();
     final canGoForward = await controller.canGoForward();
-    final currentUrl = url?.toString() ?? (await controller.getUrl())?.toString() ?? '';
+    final currentUrl =
+        url?.toString() ?? (await controller.getUrl())?.toString() ?? '';
 
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     setState(() {
       _isLoading = false;
@@ -71,7 +72,9 @@ class _WebViewScreenState extends ConsumerState<WebViewScreen> {
   }
 
   Future<bool> _handleBackPressed() async {
-    if (_webViewController == null) return true;
+    if (_webViewController == null) {
+      return true;
+    }
 
     final canGoBack = await _webViewController!.canGoBack();
 
@@ -81,6 +84,14 @@ class _WebViewScreenState extends ConsumerState<WebViewScreen> {
     }
 
     return true;
+  }
+
+  Future<void> _openAppInfo() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => const AppInfoScreen(),
+      ),
+    );
   }
 
   @override
@@ -93,7 +104,7 @@ class _WebViewScreenState extends ConsumerState<WebViewScreen> {
         body: const SafeArea(
           child: Center(
             child: Text(
-              '접속할 페이지 주소가 없습니다.',
+              '\uC811\uC18D\uD560 \uD398\uC774\uC9C0 \uC8FC\uC18C\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.',
               style: TextStyle(
                 fontSize: 16,
                 color: CustomColors.greyDark,
@@ -104,8 +115,26 @@ class _WebViewScreenState extends ConsumerState<WebViewScreen> {
       );
     }
 
-    return WillPopScope(
-      onWillPop: _handleBackPressed,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) {
+          return;
+        }
+
+        final navigator = Navigator.of(context);
+        final shouldPop = await _handleBackPressed();
+        if (!shouldPop || !mounted) {
+          return;
+        }
+
+        if (navigator.canPop()) {
+          navigator.pop(result);
+          return;
+        }
+
+        await SystemNavigator.pop();
+      },
       child: Scaffold(
         backgroundColor: CustomColors.background,
         body: SafeArea(
@@ -130,7 +159,9 @@ class _WebViewScreenState extends ConsumerState<WebViewScreen> {
                   _webViewController = controller;
                 },
                 onLoadStart: (controller, url) {
-                  if (!mounted) return;
+                  if (!mounted) {
+                    return;
+                  }
 
                   setState(() {
                     _isLoading = true;
@@ -140,27 +171,24 @@ class _WebViewScreenState extends ConsumerState<WebViewScreen> {
                 onLoadStop: (controller, url) async {
                   await _updateNavigationState(controller, url);
                 },
-
-                /// 네트워크/웹뷰 로딩 오류
-                /// 운영용에서는 별도 오류 문구를 띄우지 않고 로딩만 해제
                 onReceivedError: (controller, request, error) {
-                  if (!mounted) return;
+                  if (!mounted) {
+                    return;
+                  }
 
                   setState(() {
                     _isLoading = false;
                   });
                 },
-
-                /// redirect/intro 과정에서 404 등이 발생할 수 있으므로 무시
                 onReceivedHttpError: (controller, request, errorResponse) {
-                  if (!mounted) return;
+                  if (!mounted) {
+                    return;
+                  }
 
                   setState(() {
                     _isLoading = false;
                   });
                 },
-
-                /// 운영용 임시 SSL 허용 처리
                 onReceivedServerTrustAuthRequest: (controller, challenge) async {
                   final host = challenge.protectionSpace.host;
 
@@ -174,19 +202,16 @@ class _WebViewScreenState extends ConsumerState<WebViewScreen> {
                     action: ServerTrustAuthResponseAction.CANCEL,
                   );
                 },
-
                 onPermissionRequest: (controller, request) async {
                   return PermissionResponse(
                     resources: request.resources,
                     action: PermissionResponseAction.GRANT,
                   );
                 },
-
                 shouldOverrideUrlLoading: (controller, navigationAction) async {
                   return NavigationActionPolicy.ALLOW;
                 },
               ),
-
               if (_isLoading)
                 Container(
                   color: CustomColors.background.withValues(alpha: 0.5),
@@ -205,7 +230,7 @@ class _WebViewScreenState extends ConsumerState<WebViewScreen> {
           top: false,
           child: Container(
             height: 60,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: CustomColors.surface,
               border: Border(
                 top: BorderSide(
@@ -239,7 +264,9 @@ class _WebViewScreenState extends ConsumerState<WebViewScreen> {
                     color: CustomColors.primary,
                   ),
                   onPressed: () async {
-                    if (_webViewController == null) return;
+                    if (_webViewController == null) {
+                      return;
+                    }
 
                     if (mounted) {
                       setState(() {
@@ -266,6 +293,13 @@ class _WebViewScreenState extends ConsumerState<WebViewScreen> {
                         }
                       : null,
                 ),
+                IconButton(
+                  icon: const Icon(
+                    Icons.settings_outlined,
+                    color: CustomColors.primary,
+                  ),
+                  onPressed: _openAppInfo,
+                ),
               ],
             ),
           ),
@@ -275,7 +309,9 @@ class _WebViewScreenState extends ConsumerState<WebViewScreen> {
   }
 
   bool _isMainPage(String url) {
-    if (url.isEmpty) return false;
+    if (url.isEmpty) {
+      return false;
+    }
 
     final normalizedUrl = url.toLowerCase();
 

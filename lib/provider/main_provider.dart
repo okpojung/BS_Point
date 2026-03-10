@@ -1,14 +1,20 @@
+import 'dart:convert';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../res/constants.dart';
 
-// 로그인 상태 관리
 class AuthState {
   final bool isLoggedIn;
   final String? userPhone;
   final Map<String, dynamic>? userInfo;
 
-  const AuthState({required this.isLoggedIn, this.userPhone, this.userInfo});
+  const AuthState({
+    required this.isLoggedIn,
+    this.userPhone,
+    this.userInfo,
+  });
 
   AuthState copyWith({
     bool? isLoggedIn,
@@ -23,38 +29,49 @@ class AuthState {
   }
 }
 
-// 인증 상태 관리 Notifier
 class AuthNotifier extends StateNotifier<AuthState> {
   AuthNotifier() : super(const AuthState(isLoggedIn: false)) {
     _loadAuthState();
   }
 
-  // 로그인 상태 로드
   Future<void> _loadAuthState() async {
     final prefs = await SharedPreferences.getInstance();
     final isLoggedIn = prefs.getBool(Constants.keyIsLoggedIn) ?? false;
     final userPhone = prefs.getString(Constants.keyUserPhone);
+    final rawUserInfo = prefs.getString(Constants.keyUserInfo);
 
     if (isLoggedIn && userPhone != null) {
-      state = AuthState(isLoggedIn: true, userPhone: userPhone);
+      state = AuthState(
+        isLoggedIn: true,
+        userPhone: userPhone,
+        userInfo: _decodeUserInfo(rawUserInfo),
+      );
     }
   }
 
-  // 로그인 처리
   Future<void> login(String phoneNumber, Map<String, dynamic>? userInfo) async {
     final prefs = await SharedPreferences.getInstance();
+    final sanitizedUserInfo = _sanitizeUserInfo(userInfo);
 
     await prefs.setBool(Constants.keyIsLoggedIn, true);
     await prefs.setString(Constants.keyUserPhone, phoneNumber);
 
+    if (sanitizedUserInfo != null) {
+      await prefs.setString(
+        Constants.keyUserInfo,
+        jsonEncode(sanitizedUserInfo),
+      );
+    } else {
+      await prefs.remove(Constants.keyUserInfo);
+    }
+
     state = AuthState(
       isLoggedIn: true,
       userPhone: phoneNumber,
-      userInfo: userInfo,
+      userInfo: sanitizedUserInfo,
     );
   }
 
-  // 로그아웃 처리
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
 
@@ -65,18 +82,50 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = const AuthState(isLoggedIn: false);
   }
 
-  // 웹뷰 URL 생성
   String getWebViewUrl() {
     if (state.userPhone != null) {
-      // 하이픈 제거
       final phoneNumber = state.userPhone!.replaceAll('-', '');
       return '${Constants.webViewBaseUrl}?number=$phoneNumber';
     }
+
     return Constants.webViewBaseUrl;
+  }
+
+  Map<String, dynamic>? _decodeUserInfo(String? rawUserInfo) {
+    if (rawUserInfo == null || rawUserInfo.isEmpty) {
+      return null;
+    }
+
+    try {
+      final decoded = jsonDecode(rawUserInfo);
+      if (decoded is Map<String, dynamic>) {
+        return decoded;
+      }
+      if (decoded is Map) {
+        return decoded.map(
+          (key, value) => MapEntry(key.toString(), value),
+        );
+      }
+    } catch (_) {
+      return null;
+    }
+
+    return null;
+  }
+
+  Map<String, dynamic>? _sanitizeUserInfo(Map<String, dynamic>? userInfo) {
+    if (userInfo == null) {
+      return null;
+    }
+
+    final sanitized = <String, dynamic>{};
+    userInfo.forEach((key, value) {
+      sanitized[key] = value?.toString();
+    });
+    return sanitized;
   }
 }
 
-// Provider 정의
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   return AuthNotifier();
 });
