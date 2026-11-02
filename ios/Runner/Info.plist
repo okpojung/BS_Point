@@ -45,10 +45,10 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
-	<!-- ARS 로그인을 위한 권한 -->
-	<key>NSMicrophoneUsageDescription</key>
-	<string>ARS 인증을 위해 마이크 권한이 필요합니다.</string>
-	<key>NSContactsUsageDescription</key>
-	<string>연락처 접근을 위해 권한이 필요합니다.</string>
+	<!-- ARS 인증(ars_login 2.x): tel: 로 인증 번호에 전화 -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>tel</string>
+	</array>
 </dict>
 </plist>

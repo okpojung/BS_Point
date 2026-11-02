@@ -24,12 +24,35 @@ BS Point는 Flutter 기반 모바일 앱입니다.
 - 웹뷰 하단 설정 아이콘으로 진입
 - 앱 버전, 빌드 번호, 패키지명 표시
 - ARS 인증 정보 중 주요 항목만 표시
-  - 인증전화번호
-  - 앱 UUID
+  - 인증 전화번호
   - 인증 시각
-  - 추천인 전화번호
+  - 인증 번호(ars2fa 세션 ID)
+  - (1.0.4 이하에서 저장된 정보는 앱 UUID, 추천인 전화번호도 표시)
 - Android/iOS 기기 정보 표시
 - Android에서 통신사(Carrier) 정보 표시
+
+
+## ARS 인증 (ars2fa, ars_login 2.x)
+
+1.0.5부터 휴대폰 인증은 [ars2fa](https://ars2fa.baro.me)를 씁니다. [ARS 인증]을 누르면 앱이 인증 번호로 바로 전화를 걸고(번호는 화면에 표시하지 않음), 통신사 기록으로 확인된 번호로 로그인합니다.
+
+| 항목 | 값 (`lib/res/constants.dart`) |
+|---|---|
+| 앱 이름 (`mobile_app_name`) | `BS Point` |
+| Android 패키지 | `com.hnglife.bspoint` |
+| iOS Bundle ID | `com.hnglife.bspoint` |
+| 통화 방식 (`type`) | `null` = 콘솔 앱 설정, `0` = 1번 누르기 없음, `1` = 1번 누르기 |
+
+API 키는 소스에 넣지 않고 빌드할 때 넣습니다.
+
+```bash
+flutter run --dart-define=ARS2FA_API_KEY=<콘솔에서 발급한 키>
+flutter build apk --release --dart-define=ARS2FA_API_KEY=<키>
+flutter build ipa --release --dart-define=ARS2FA_API_KEY=<키>
+```
+
+- Android 권한은 `CALL_PHONE` 하나입니다. 처음 인증할 때 전화 권한 창이 뜨고, 허용하면 바로 발신합니다.
+- 1.0.4 이하(구 PHP 서버)에서 주던 앱 UUID, 추천인 전화번호는 ars2fa가 주지 않습니다.
 
 ## 기술 스택
 

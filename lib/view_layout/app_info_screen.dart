@@ -132,8 +132,9 @@ class _AppInfoScreenState extends ConsumerState<AppInfoScreen> {
 
     const visibleFields = <String, String>{
       'app_cid': '\uC778\uC99D \uC804\uD654\uBC88\uD638',
-      'appuuid': '\uC571 UUID',
       'now': '\uC778\uC99D \uC2DC\uAC01',
+      'session_id': '\uC778\uC99D \uBC88\uD638',
+      'appuuid': '\uC571 UUID',
       'prnts_phone_no': '\uCD94\uCC9C\uC778 \uC804\uD654\uBC88\uD638',
     };
 

@@ -1,7 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- ARS 로그인을 위한 권한 -->
     <uses-permission android:name="android.permission.CALL_PHONE" />
-    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <!-- ars_login 2.x: 전화 걸기(CALL_PHONE) 하나만 필요 (READ_PHONE_STATE 제거) -->
     <uses-permission android:name="android.permission.INTERNET" />
     
     <!-- Android Auto 하드웨어 기능 사용하지 않음 (Google 공식 권장사항) -->
@@ -52,6 +52,11 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- ARS 인증: 권한이 거부됐을 때 다이얼러(tel:)로 넘어가기 -->
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
+            <data android:scheme="tel" />
         </intent>
     </queries>
 </manifest>

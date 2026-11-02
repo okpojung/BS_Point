@@ -1,7 +1,7 @@
 name: bs_point
 description: "A new Flutter project."
 publish_to: 'none'
-version: 1.0.4+4
+version: 1.0.5+5
 
 environment:
   sdk: ^3.8.1
@@ -15,7 +15,7 @@ dependencies:
   ars_login:
     git:
       url: https://github.com/okpojung/ars_auth.git
-      ref: main  # v1.2.0
+      ref: feature/ars2fa-v1  # ars_login 2.x (ars2fa). SDK PR #2가 main에 합쳐지면 main으로 바꾸세요.
   
   flutter_inappwebview: ^6.0.0
   shared_preferences: ^2.2.2
