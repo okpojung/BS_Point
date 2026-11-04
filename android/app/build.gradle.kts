@@ -36,18 +36,28 @@ android {
         versionName = flutter.versionName
     }
 
+    // key.properties(android/key.properties)가 있을 때만 release 서명 설정을 만든다.
+    // 없는 PC에서는 debug 서명으로 대체해 debug 빌드/flutter run이 막히지 않게 한다.
+    val hasReleaseKeystore = keystorePropertiesFile.exists()
     signingConfigs {
-        create("release") {
-            keyAlias = keystoreProperties["keyAlias"] as String
-            keyPassword = keystoreProperties["keyPassword"] as String
-            storeFile = file(keystoreProperties["storeFile"] as String)
-            storePassword = keystoreProperties["storePassword"] as String
+        if (hasReleaseKeystore) {
+            create("release") {
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+            }
         }
     }
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = if (hasReleaseKeystore) {
+                signingConfigs.getByName("release")
+            } else {
+                println("WARNING: android/key.properties not found. Release build will be signed with the debug key.")
+                signingConfigs.getByName("debug")
+            }
             isMinifyEnabled = false
             isShrinkResources = false
         }
