@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
     <!-- ARS 로그인을 위한 권한 -->
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <!-- ars_login 2.x: 전화 걸기(CALL_PHONE) 하나만 필요 (READ_PHONE_STATE 제거) -->
@@ -13,7 +15,8 @@
         android:label="비에스포인트"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:appCategory="productivity">
+        android:appCategory="productivity"
+        android:usesCleartextTraffic="true">
         
         <activity
             android:name="com.hnglife.bspoint.MainActivity"
