@@ -9,6 +9,7 @@ import '../services/my_app_store.dart';
 import 'app_info_screen.dart';
 import 'my_app_picker_screen.dart';
 import 'qr_scanner_screen.dart';
+import 'qr_history_screen.dart';
 
 class WebViewScreen extends ConsumerStatefulWidget {
   const WebViewScreen({super.key});
@@ -141,11 +142,15 @@ class _WebViewScreenState extends ConsumerState<WebViewScreen>
     if (mounted) await _resolve(navigate: changed == true);
   }
 
-  Future<void> _scan() async {
+  Future<void> _scan({bool history = false}) async {
+    if (_childScreen) return;
     _childScreen = true;
     final url = await Navigator.push<String>(
       context,
-      MaterialPageRoute(builder: (_) => const QrScannerScreen()),
+      MaterialPageRoute(
+        builder: (_) =>
+            history ? const QrHistoryScreen() : const QrScannerScreen(),
+      ),
     );
     _childScreen = false;
     if (!mounted || url == null || safeWebUri(url) == null) return;
@@ -154,6 +159,12 @@ class _WebViewScreenState extends ConsumerState<WebViewScreen>
     if (uri.scheme == 'http') _approvedHttpHosts.add(uri.host);
     if (_controller != null) {
       await _controller!.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
+    } else {
+      setState(() {
+        _homeUrl = url;
+        _status = null;
+        _initializing = false;
+      });
     }
   }
 
@@ -326,10 +337,14 @@ class _WebViewScreenState extends ConsumerState<WebViewScreen>
                   _childScreen = false;
                 },
               ),
-              IconButton(
-                tooltip: 'QR 코드 스캔',
+              PopupMenuButton<String>(
+                tooltip: 'QR 스캔 / 스캔 이력',
                 icon: const Icon(Icons.qr_code_scanner),
-                onPressed: _homeUrl == null ? null : _scan,
+                onSelected: (value) => _scan(history: value == 'history'),
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'scan', child: Text('QR 코드 스캔')),
+                  PopupMenuItem(value: 'history', child: Text('스캔 이력')),
+                ],
               ),
             ],
           ),

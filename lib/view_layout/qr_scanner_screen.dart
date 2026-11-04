@@ -5,6 +5,8 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/my_app_store.dart';
+import '../services/qr_history_store.dart';
+import 'qr_history_screen.dart';
 import 'my_app_picker_screen.dart';
 
 class QrScannerScreen extends StatefulWidget {
@@ -17,11 +19,16 @@ class _QrScannerScreenState extends State<QrScannerScreen>
     with WidgetsBindingObserver {
   final _controller = MobileScannerController(
     autoStart: false,
-    detectionSpeed: DetectionSpeed.noDuplicates,
+    detectionSpeed: DetectionSpeed.normal,
     formats: [BarcodeFormat.qrCode],
   );
   String? _value;
   bool _opening = false;
+  bool _historyOpen = false;
+  bool _savingHistory = false;
+  String? _historyError;
+  Future<void> _historyWrite = Future<void>.value();
+  final _historyStore = QrHistoryStore();
   bool _returningFromSettings = false;
   String? _cameraError;
 
@@ -33,9 +40,13 @@ class _QrScannerScreenState extends State<QrScannerScreen>
   }
 
   Future<void> _start() async {
-    if (!mounted || _value != null) return;
+    if (!mounted || _value != null || _historyOpen) return;
     try {
       await _controller.start();
+      if (_historyOpen) {
+        await _controller.stop();
+        return;
+      }
       if (mounted) setState(() => _cameraError = null);
     } catch (_) {
       if (mounted) {
@@ -46,6 +57,7 @@ class _QrScannerScreenState extends State<QrScannerScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (_historyOpen) return;
     if (state == AppLifecycleState.resumed && _returningFromSettings) {
       _returningFromSettings = false;
       unawaited(_start());
@@ -67,7 +79,7 @@ class _QrScannerScreenState extends State<QrScannerScreen>
   }
 
   void _detected(BarcodeCapture capture) {
-    if (_value != null) return;
+    if (!mounted || _historyOpen || _value != null) return;
     final values = capture.barcodes
         .map((b) => b.rawValue)
         .whereType<String>()
@@ -75,6 +87,48 @@ class _QrScannerScreenState extends State<QrScannerScreen>
     if (values.isEmpty) return;
     setState(() => _value = values.first);
     unawaited(_controller.stop());
+    _historyWrite = _saveHistory(values.first);
+  }
+
+  Future<void> _saveHistory(String value) async {
+    setState(() {
+      _savingHistory = true;
+      _historyError = null;
+    });
+    try {
+      await _historyStore.add(value);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _historyError = '스캔 이력을 저장하지 못했습니다. 저장 공간을 확인해 주세요.');
+      }
+    } finally {
+      if (mounted) setState(() => _savingHistory = false);
+    }
+  }
+
+  Future<void> _showHistory() async {
+    if (_historyOpen || _opening) return;
+    _historyOpen = true;
+    try {
+      try {
+        await _controller.stop();
+      } catch (_) {}
+      await _historyWrite;
+      if (!mounted) return;
+      final url = await Navigator.push<String>(
+        context,
+        MaterialPageRoute(builder: (_) => const QrHistoryScreen()),
+      );
+      if (!mounted) return;
+      if (url != null && safeWebUri(url) != null) {
+        _value = url;
+        Navigator.pop(context, url);
+        return;
+      }
+    } finally {
+      _historyOpen = false;
+      if (mounted && _value == null) unawaited(_start());
+    }
   }
 
   Future<void> _open() async {
@@ -88,8 +142,30 @@ class _QrScannerScreenState extends State<QrScannerScreen>
         return;
       }
     } else {
-      final uri = Uri.tryParse(value);
-      if (uri != null && {'tel', 'mailto', 'sms'}.contains(uri.scheme)) {
+      final uri = qrExternalUri(value);
+      if (uri != null) {
+        final approved = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('연결 앱 열기'),
+            content: Text('다음 내용을 연결 앱에서 열까요?\n$value'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('취소'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('열기'),
+              ),
+            ],
+          ),
+        );
+        if (!mounted) return;
+        if (approved != true) {
+          setState(() => _opening = false);
+          return;
+        }
         try {
           final opened = await launchUrl(
             uri,
@@ -137,15 +213,18 @@ class _QrScannerScreenState extends State<QrScannerScreen>
 
   @override
   Widget build(BuildContext context) {
-    final uri = Uri.tryParse(_value ?? '');
+    final uri = qrExternalUri(_value ?? '');
     final canOpen =
-        _value != null &&
-        (safeWebUri(_value!) != null ||
-            (uri != null && {'tel', 'mailto', 'sms'}.contains(uri.scheme)));
+        _value != null && (safeWebUri(_value!) != null || (uri != null));
     return Scaffold(
       appBar: AppBar(
         title: const Text('QR 코드 스캔'),
         actions: [
+          TextButton.icon(
+            onPressed: _showHistory,
+            icon: const Icon(Icons.history),
+            label: const Text('스캔 이력'),
+          ),
           IconButton(
             tooltip: '손전등 켜기/끄기',
             icon: const Icon(Icons.flashlight_on),
@@ -202,6 +281,14 @@ class _QrScannerScreenState extends State<QrScannerScreen>
                   ),
                   const SizedBox(height: 16),
                   SelectableText(_value!),
+                  if (_savingHistory) const LinearProgressIndicator(),
+                  if (_historyError != null)
+                    Text(
+                      _historyError!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
                   const SizedBox(height: 24),
                   if (canOpen)
                     FilledButton(
@@ -226,11 +313,18 @@ class _QrScannerScreenState extends State<QrScannerScreen>
                     child: const Text('복사'),
                   ),
                   TextButton(
-                    onPressed: () {
-                      setState(() => _value = null);
-                      unawaited(_start());
-                    },
+                    onPressed: _savingHistory
+                        ? null
+                        : () {
+                            setState(() => _value = null);
+                            unawaited(_start());
+                          },
                     child: const Text('다시 스캔'),
+                  ),
+                  TextButton.icon(
+                    onPressed: _showHistory,
+                    icon: const Icon(Icons.history),
+                    label: const Text('스캔 이력 보기'),
                   ),
                 ],
               ),
